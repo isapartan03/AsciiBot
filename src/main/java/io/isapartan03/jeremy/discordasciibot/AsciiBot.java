@@ -9,6 +9,10 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.FileUpload;
 import io.github.seujorgenochurras.DefaultAsciifier;
+import io.github.seujorgenochurras.image.ascii.AsciiParser;
+import io.github.seujorgenochurras.image.ascii.ParserBuilder;
+import io.github.seujorgenochurras.image.ascii.ParserConfig;
+import io.github.seujorgenochurras.image.ascii.algorithm.pixel.bright.Algorithms;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +48,9 @@ public class AsciiBot extends ListenerAdapter{
         //ignorar menjesas de otros bots (incluido el mismo)
         if (event.getAuthor().isBot()) return;
         
+        //Verificamos si el mensaje empieza con !ascii
+        if(!event.getMessage().getContentRaw().startsWith("!ascii")) return;
+        
         //5. Buscar si el mensaje trae una imagen adjunta
         for (Message.Attachment attachment : event.getMessage().getAttachments()) {
             if (attachment.isImage()) {
@@ -52,6 +59,9 @@ public class AsciiBot extends ListenerAdapter{
                 return;
             }
         }
+        
+        //Si no hay imagen, decir
+        event.getChannel().sendMessage("Necesitas adjuntar la imagen junto al comando").queue();
     }
     
     private void procesarImagen(Message.Attachment attachment, MessageReceivedEvent event){
@@ -61,12 +71,21 @@ public class AsciiBot extends ListenerAdapter{
             tempArch = Files.createTempFile("discord-ascii-",".img");
             attachment.getProxy().downloadToFile(tempArch.toFile()).get();
             
-            /*8. Convertir a ASCII, usamos la configuracvión por defecto: altura, ancho y sin color
-            ANSI (Discord no lo porta bien en mensajes*/
-            String asciiArt = DefaultAsciifier.toAscii(tempArch.toString(), 30, 80, false);
+            /*8. Convertir a ASCII*/
+            String[] caracteres = {"@", "#", "S", "%", "?", "*", "+", ";", ":", ",", "."};
+            
+            ParserConfig config = ParserBuilder.startBuild()
+                    .parserAlgorithm(Algorithms.HUMAN_EYE_ALGORITHM)
+                    .scaled()
+                    .width(85)
+                    .height(50)
+                    .getScale()
+                    .symbols(caracteres)
+                    .build();
             
             /*9. Enviar el resultado, discord tiene un límite de 2000 caracteres por mensaje. Si el
             arte es muy grande, lo enviaremos por .txt*/
+            String asciiArt = AsciiParser.parse(tempArch.toString(), config);
             if (asciiArt.length() <=2000){
                 event.getChannel().sendMessage("```\n" + asciiArt + "\n```").queue();
             }else{

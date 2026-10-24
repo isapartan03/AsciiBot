@@ -29,14 +29,16 @@ public class MessageListener extends ListenerAdapter{
                     .queue();
         }
         
-        boolean tieneImagen = false;
+        String[] partes = msj.split(" ");
+        String tipoConversor = (partes.length > 1) ? partes[1] : "normal";
         
+        boolean tieneImagen = false;
         //Buscar si el mensaje trae una imagen adjunta
         for (Message.Attachment attachment : event.getMessage().getAttachments()) {
             if (attachment.isImage()) {
                 tieneImagen = true;
                 //6. Procesar la imagen en un hilo, aparte de no bloquear el Gateway
-                asciiServices.procesarImagen(attachment, event);
+                asciiServices.procesarImagen(attachment, event, tipoConversor);
                 break;
             }
         }
